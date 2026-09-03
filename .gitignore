@@ -1,0 +1,21 @@
+# 编译生成的可执行二进制文件
+*.exe
+*.exe*
+*.dll
+*.so
+*.dylib
+web_app
+
+# 忽略本地开发真实的配置文件（防止密码泄露）
+config.yaml
+settings.yaml
+conf/config.yaml
+
+# 日志文件
+*.log
+/logs
+
+# IDE 插件配置
+.idea/
+.vscode/
+.DS_Store
