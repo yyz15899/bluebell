@@ -17,13 +17,14 @@ import (
 )
 
 // Init 初始化Logger
-func Init() (err error) {
+func Init(mode string) (err error) {
 	writeSyncer := getLogWriter( // 配置读取信息
 		viper.GetString("log.filename"),
 		viper.GetInt("log.max_size"),
 		viper.GetInt("log.max_backups"),
 		viper.GetInt("log.max_age"),
 	)
+
 	encoder := getEncoder()    //logger配置(时间显示模式等)
 	var l = new(zapcore.Level) // level等级(debug)
 	// 等价于 l1 = zapcore.Level l = &l1  (存储指针)
@@ -31,9 +32,22 @@ func Init() (err error) {
 	if err != nil {
 		return
 	}
-	core := zapcore.NewCore(encoder, writeSyncer, l)
 
-	lg := zap.New(core, zap.AddCaller())
+	var core zapcore.Core
+	if mode == "dev" {
+		// 开发模式,日志同时输出到终端和文件
+		consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+		consoleCore := zapcore.NewCore(consoleEncoder, zapcore.Lock(os.Stdout), l)
+		// 构建文件 Core
+		fileCore := zapcore.NewCore(encoder, writeSyncer, l)
+		// 使用 NewTee 将两个 Core 合并
+		core = zapcore.NewTee(consoleCore, fileCore)
+	} else {
+		core = zapcore.NewCore(encoder, writeSyncer, l)
+
+	}
+
+	lg := zap.New(core, zap.AddCaller()) // AddCaller()选项设置输出文件名和行号
 
 	zap.ReplaceGlobals(lg) // 替换zap包中全局的logger实例，后续在其他包中只需使用zap.L()调用即可
 	return

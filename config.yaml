@@ -1,0 +1,33 @@
+app:
+  name: "web_app"
+  mode: "dev"
+  port: 8080
+
+log:
+  level: "debug"
+  filename: "web_app.log"
+  max_size: 200
+  max_backups: 7
+  max_age: 30
+
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: "root123456"
+  dbname: "db_1"
+  MaxIdleConns: 20
+  MaxOpenConns: 200
+
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: 0
+  db: 0
+  pool_size: 30
+  min_idle: 50
+
+snowflake:
+  starttime: "2026-09-03"
+  machineid: 1

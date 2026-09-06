@@ -3,6 +3,7 @@ module web_app
 go 1.27.0
 
 require (
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible

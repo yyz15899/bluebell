@@ -2,7 +2,9 @@ package mysql
 
 // gorm
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -14,7 +16,7 @@ var db *gorm.DB
 
 func Init() error {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		viper.GetString("mysql.name"),
+		viper.GetString("mysql.user"),
 		viper.GetString("mysql.password"),
 		viper.GetString("mysql.host"),
 		viper.GetInt("mysql.port"),
@@ -25,8 +27,8 @@ func Init() error {
 
 	// ctx := context.Background()
 	if err != nil {
-		fmt.Printf("connect DB failed,err:%v\n", err)
-		return nil
+		// fmt.Printf("数据库连接配置失败,err:%v\n", err)
+		return err
 	}
 
 	// 配置连接池
@@ -49,6 +51,15 @@ func Init() error {
 	sqlDB.SetMaxIdleConns(maxIdle)
 	sqlDB.SetMaxOpenConns(maxOpen)
 
+	// 验证连通性
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err = sqlDB.PingContext(ctx)
+	if err != nil {
+		// fmt.Printf("connect DB failed,err:%v\n", err)
+		return err
+	}
 	// sqlDB.SetConnMaxLifetime(time.Hour)	// 建议开启：防止底层连接死锁或网关断开连接（如 MySQL 默认 8小时超时）
 	return nil
 }
