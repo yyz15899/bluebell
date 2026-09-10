@@ -25,3 +25,8 @@ CREATE TABLE `community` (
   UNIQUE KEY `idx_community_id` (`community_id`),
   UNIQUE KEY `idx_community_name` (`community_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `community` VALUES (1,1,'GO','GOLANG','2020-10-1 08:00:00','2020-10-11 08:00:00');
+INSERT INTO `community` VALUES (2,2,'游戏','王者','2020-10-1 08:00:00','2020-10-11 08:00:00');
+INSERT INTO `community` VALUES (3,3,'语言','GOLANG','2020-10-1 08:00:00','2020-10-11 08:00:00');
+INSERT INTO `community` VALUES (4,4,'py','python','2020-10-1 08:00:00','2020-10-11 08:00:00');
