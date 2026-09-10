@@ -37,7 +37,7 @@ func Init(mode string) (err error) {
 	if mode == "dev" {
 		// 开发模式,日志同时输出到终端和文件
 		consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-		consoleCore := zapcore.NewCore(consoleEncoder, zapcore.Lock(os.Stdout), l)
+		consoleCore := zapcore.NewCore(consoleEncoder, zapcore.Lock(os.Stdout), zap.DebugLevel)
 		// 构建文件 Core
 		fileCore := zapcore.NewCore(encoder, writeSyncer, l)
 		// 使用 NewTee 将两个 Core 合并

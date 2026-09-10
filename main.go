@@ -27,7 +27,7 @@ func main() {
 	}
 
 	// 2:初始化日志
-	if err := logger.Init(); err != nil {
+	if err := logger.Init(viper.GetString("app.mode")); err != nil {
 		fmt.Printf("init logger failed err:%v\n", err)
 		return
 	}

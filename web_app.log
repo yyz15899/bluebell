@@ -1,8 +1,0 @@
-{"level":"ERROR","time":"2026-09-05T02:17:59.884+0800","caller":"controller/user.go:19","msg":"SignUp with invaild param","error":"Key: 'ParamSignUp.RePassword' Error:Field validation for 'RePassword' failed on the 'required' tag"}
-{"level":"INFO","time":"2026-09-05T02:17:59.884+0800","caller":"logger/logger.go:72","msg":"/signup","status":200,"method":"POST","path":"/signup","query":"","ip":"127.0.0.1","user-agent":"PostmanRuntime/2.5.0","errors":"","cost":0}
-{"level":"INFO","time":"2026-09-05T02:20:30.120+0800","caller":"bluebell/main.go:88","msg":"shoudown server ...."}
-{"level":"INFO","time":"2026-09-05T02:20:30.121+0800","caller":"bluebell/main.go:97","msg":"server exiting"}
-{"level":"DEBUG","time":"2026-09-05T19:57:53.672+0800","caller":"bluebell/main.go:35","msg":"logger init success..."}
-{"level":"INFO","time":"2026-09-05T19:59:29.864+0800","caller":"logger/logger.go:72","msg":"/signup","status":200,"method":"POST","path":"/signup","query":"","ip":"127.0.0.1","user-agent":"PostmanRuntime/2.5.0","errors":"","cost":0.0139693}
-{"level":"INFO","time":"2026-09-05T20:00:02.667+0800","caller":"bluebell/main.go:88","msg":"shoudown server ...."}
-{"level":"INFO","time":"2026-09-05T20:00:02.667+0800","caller":"bluebell/main.go:97","msg":"server exiting"}

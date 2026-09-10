@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"web_app/controller"
 	"web_app/logger"
+	"web_app/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,8 +16,13 @@ func Setup() *gin.Engine {
 	// 注册业务路由
 	r.POST("/signup", controller.SignUpHandler)
 
-	r.GET("/login", func(c *gin.Context) {
-		c.JSON(http.StatusOK, "ok")
+	// 登录路由
+	r.POST("/signin", controller.SigninHandler)
+	// 加上jwt中间件
+	r.GET("/login", middlewares.JWTAuthMiddleware(), func(c *gin.Context) {
+		// 如果是已登录用户 返回pong
+		// 判断请求头中是否有 有效的jwt
+		c.String(http.StatusOK, "pong")
 	})
 	return r
 }

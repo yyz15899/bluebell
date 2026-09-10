@@ -3,9 +3,11 @@ package mysql
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"web_app/models"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // CheckUserExist 查重username
@@ -49,4 +51,25 @@ func encryptPassword(opassword string) string {
 	h := md5.New()
 	h.Write([]byte(secret))
 	return hex.EncodeToString(h.Sum([]byte(opassword)))
+}
+
+// GetUser 按照username取出用户信息 包括密码密文
+
+var ErrorUserNotExist = errors.New("user not exist")
+
+func GetUser(username string) (error, *models.User) { // 将数据库中该用户注册时的信息返回
+	u := new(models.User)
+	if err := db.Where("username = ?", username).First(u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) { // gorm.ErrRecordNotFound 表示找不到数据报err
+			return ErrorUserNotExist, nil
+		}
+		zap.L().Error("mysql getuser failed", zap.String("username", username), zap.Error(err))
+		return err, nil
+	}
+	return nil, u
+}
+
+// 判断密码是否正确(都是加密后的)
+func ComparePassword(u *models.User, password string) bool {
+	return u.Password == encryptPassword(password)
 }

@@ -35,3 +35,22 @@ func SignUp(p *models.ParamSignUp) error { // 接收一个指针(结构体)变�
 	return mysql.InsertUser(&user)
 
 }
+
+func SignIn(p *models.ParamSignIn) (int64, error) {
+	// 查看用户是否存在(直接取出用户)
+	err, info := mysql.GetUser(p.Username) // 这里的info 是存储get过来的用户信息的结构体指针
+	if err != nil {
+		if errors.Is(err, mysql.ErrorUserNotExist) {
+			zap.L().Warn("SignIn: user not exist", zap.String("username", p.Username))
+		} else {
+			zap.L().Error("SignIn logic failed on GetUserByUsername", zap.String("username", p.Username), zap.Error(err))
+		}
+		return 0, errors.New("用户名或密码错误") // 统一文案, 不泄露账号是否存在
+	}
+	// 密码是否正确
+	if !mysql.ComparePassword(info, p.Password) {
+		zap.L().Warn("SignIn: password mismatch", zap.String("username", p.Username))
+		return 0, errors.New("用户名或密码错误")
+	}
+	return info.UserID, nil
+}
