@@ -8,11 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"web_app/dao/mysql"
-	"web_app/dao/redis"
-	"web_app/logger"
-	snowflask "web_app/pkg/snowflake"
-	"web_app/routes"
+	routes "web_app/00-routes"
+	logic "web_app/02-logic"
+	"web_app/03-dao/mysql"
+	"web_app/03-dao/redis"
+	logger "web_app/04-logger"
+	snowflask "web_app/07-pkg/snowflake"
 	"web_app/settings"
 
 	"github.com/spf13/viper"
@@ -61,6 +62,7 @@ func main() {
 	// 雪花生成user_id
 	if err := snowflask.Init(viper.GetString("snowflake.starttime"), viper.GetInt64("snowflake.machineid")); err != nil {
 		fmt.Printf("init snowflake failed,err:%v\n", err)
+		return
 	}
 
 	// 5:注册路由
@@ -77,6 +79,25 @@ func main() {
 		}
 	}()
 
+	// 同步票数
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			logic.SyncPostVoteNumSQL()
+		}
+	}()
+
+	// 重算协程(计算HNscore)
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := logic.RecomputeHNScores(); err != nil {
+				zap.L().Error("recompute hn scores failed", zap.Error(err))
+			}
+		}
+	}()
 	// 等待中断信号来优雅的关闭服务器,设置一个5s的超时
 	quit := make(chan os.Signal, 1) // 创建一个接收信号的通道
 	//kill 默认发送 syscall.SIGTERM信号

@@ -1,0 +1,24 @@
+# 编译产物
+/web_app
+*.exe
+*.dll
+*.so
+*.dylib
+
+# air 热重载的构建目录
+/tmp/
+
+# 日志
+*.log
+
+# 本地配置（含数据库密码，不入库）
+config.yaml
+
+# IDE
+.idea/
+.vscode/
+
+# 测试产物
+*.test
+coverage.txt
+
