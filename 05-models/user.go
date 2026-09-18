@@ -13,7 +13,8 @@ type User struct {
 	UpdateTime time.Time `gorm:"column:update_time;autoUpdateTime" json:"update_time"`
 }
 
-//  TableName 指定表名，防止 GORM 自动复数化变成 "users"
+//	TableName 指定表名，防止 GORM 自动复数化变成 "users"
+//
 // 决定gorm 去找哪个表
 func (u *User) TableName() string {
 	return "user"
