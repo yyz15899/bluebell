@@ -138,6 +138,18 @@ for _, p := range posts {
 
 三步流程：**set 去重 → 转 slice → DAO 用 IN 查询**
 
+> **两组 map，两种职责（极易混淆）**：
+> - `idset` / `cidset` → 职责是**去重**（唯一目的：压缩 `IN` 列表长度）
+> - `userMap` / `communityMap` → 职责是**索引**（唯一目的：O(1) 查找）
+>
+> **另需注意**：`post.author_id` 是**普通索引**（`KEY idx_author_id`），
+> 一个用户可发多帖，因此 `author_id` 在列表里**会重复**，与 `community_id` 同理。
+> 不要拿 `user.user_id`（`UNIQUE KEY idx_user_id`，唯一）的语义去推断 `post.author_id`。
+> 两者重复**性质相同、程度不同**：`community_id` 受社区总数封顶（压缩比高），
+> `author_id` 取决于活跃度分布（最差 1:1）。
+>
+> 去重**不影响查询结果**（`IN` 是集合语义），只影响 SQL 解析开销、网络载荷与内存分配。
+
 ### 2.6 `range` 的取值形式
 
 | 写法 | 拿到 | 类型 |

@@ -337,3 +337,40 @@ func DeletePost(pid int64, uid int64) error {
 	}
 	return nil
 }
+
+func UpdatePost(uid int64, pid int64, p *models.ParamUpdatePost) error {
+	// 获取authorid
+	post, err := mysql.GetPost(pid)
+	if err != nil {
+		if errors.Is(err, mysql.ErrPostNotExist) {
+			return pkg.NewBizError(pkg.CodePostNotExist)
+		}
+		zap.L().Error("db link err", zap.Error(err))
+		return pkg.WrapBizError(pkg.CodeServerBusy, err)
+	}
+	// 校验身份(authorid与uid)
+	if uid != post.AuthorID {
+		zap.L().Warn("update post: not the author",
+			zap.Int64("post_id", pid), zap.Int64("uid", uid))
+		return pkg.NewBizError(pkg.CodePermissionDenied)
+	}
+	// 先校验更改后的社区是否存在
+	if p.CommunityID != nil {
+		ok, err := mysql.CheckCommunityID(*p.CommunityID)
+		if err != nil {
+			zap.L().Error("check community failed", zap.Error(err))
+			return pkg.WrapBizError(pkg.CodeServerBusy, err)
+		}
+		if !ok {
+			return pkg.NewBizError(pkg.CodeCommunityNotExist)
+		}
+	}
+
+	// 更新数据
+	if err := mysql.UpdatePost(pid, p); err != nil {
+		zap.L().Error("update post failed", zap.Error(err), zap.Int64("post_id", pid))
+		return pkg.WrapBizError(pkg.CodeServerBusy, err)
+	}
+	return nil
+
+}

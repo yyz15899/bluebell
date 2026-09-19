@@ -13,6 +13,7 @@ type Post struct {
 	Title       string    `gorm:"column:title" json:"title"`
 	Content     string    `gorm:"column:content" json:"content"`
 	CreateTime  time.Time `gorm:"column:create_time;autoCreateTime" json:"create_time"`
+	UpdateTime  time.Time `gorm:"column:update_time;autoUpdateTime" json:"update_time"`
 }
 
 // 创建post

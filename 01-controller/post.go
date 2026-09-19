@@ -138,3 +138,28 @@ func DeletePost(c *gin.Context) {
 	// 返回响应
 	pkg.ResponseSuccess(c, "success")
 }
+
+func UpdatePost(c *gin.Context) {
+	p := new(models.ParamUpdatePost)
+	if err := c.ShouldBindJSON(p); err != nil {
+		pkg.ResponseError(c, pkg.CodeInvalidParam)
+		return
+	}
+	postid := c.Param("postid")
+	pid, err := strconv.ParseInt(postid, 10, 64)
+	if err != nil {
+		pkg.ResponseError(c, pkg.CodeInvalidParam)
+		return
+	}
+	if p.Title == nil && p.Content == nil && p.CommunityID == nil {
+		pkg.ResponseError(c, pkg.CodeInvalidParam)
+		return
+	}
+	uid := c.GetInt64(middlewares.ContextUserIDKey)
+	if err := logic.UpdatePost(uid, pid, p); err != nil {
+		ResponseWithError(c, err)
+		return
+	}
+	// 返回响应
+	pkg.ResponseSuccess(c, "success")
+}

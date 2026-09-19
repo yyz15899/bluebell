@@ -18,3 +18,10 @@ type ParamUpdate struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required"`
 }
+
+// 修改post
+type ParamUpdatePost struct {
+	Title       *string `gorm:"column:title" json:"title"`
+	Content     *string `gorm:"column:content" json:"content"`
+	CommunityID *int64  `gorm:"column:community_id" json:"community_id"`
+}

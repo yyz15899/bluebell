@@ -28,17 +28,17 @@ func Setup() *gin.Engine {
 
 	// 返回帖子
 	{
-		v1.GET("/community", controller.GetCommunities) //查询社区
-		v1.GET("/community/:id", controller.GetCommunity)
+		v1.GET("/community", controller.GetCommunities)   //查询社区
+		v1.GET("/community/:id", controller.GetCommunity) // 查询单个社区
 
-		v1.POST("/post", controller.CreatePost) // 发布帖子
-		v1.GET("/post/:postid", controller.GetPost)
-		v1.DELETE("/post/:postid", controller.DeletePost)
+		v1.POST("/post", controller.CreatePost)           // 发布帖子
+		v1.GET("/post/:postid", controller.GetPost)       // 拿到单个post详情
+		v1.PATCH("/post/:postid", controller.UpdatePost)  // 修改post内容
+		v1.DELETE("/post/:postid", controller.DeletePost) // post删除
 		v1.GET("/posts", controller.GetPostList)          // 分页post
 		v1.GET("/posts/hot", controller.GetPostListByHot) // 分页热榜post
+		v1.POST("/like", controller.PostLikeHandler)      // 点赞post
 
-		//post点赞
-		v1.POST("/like", controller.PostLikeHandler)
 	}
 
 	return r

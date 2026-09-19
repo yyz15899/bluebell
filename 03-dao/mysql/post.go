@@ -98,3 +98,21 @@ func DeletePost(postid int64) error {
 	}
 	return nil
 }
+
+func UpdatePost(pid int64, p *models.ParamUpdatePost) error {
+	updates := make(map[string]interface{}, 3)
+	if p.Title != nil {
+		updates["title"] = *p.Title
+	}
+	if p.Content != nil {
+		updates["content"] = *p.Content
+	}
+	if p.CommunityID != nil {
+		updates["community_id"] = *p.CommunityID
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	return db.Model(&models.Post{}).Where("post_id = ? AND status = ?", pid, 1).
+		Updates(updates).Error
+}
