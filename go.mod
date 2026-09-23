@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0
+	github.com/coder/websocket v1.8.15
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1

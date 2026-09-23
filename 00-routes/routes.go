@@ -18,6 +18,8 @@ func Setup() *gin.Engine {
 	v1.POST("/signup", controller.SignUpHandler)
 	// 登录路由
 	v1.POST("/signin", controller.SigninHandler)
+	// 基于websocket聊天
+	v1.GET("/ws", controller.GetChat)
 
 	// 认证 验证token中间件
 	v1.Use(middlewares.JWTAuthMiddleware())

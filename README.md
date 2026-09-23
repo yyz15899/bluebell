@@ -1,7 +1,8 @@
 # bluebell
 
 一个基于 Go 的论坛 / 社区后端服务，采用经典分层架构（routes → controller → logic → dao），
-使用 MySQL 持久化 + Redis 做投票与热榜缓存，JWT 做无状态鉴权。
+使用 MySQL 持久化 + Redis 做投票与热榜缓存，JWT 做无状态鉴权；
+基于 coder/websocket 实现了 Hub 模式的 WebSocket 实时聊天。
 
 ---
 
@@ -14,6 +15,7 @@
 - [配置说明](#配置说明)
 - [接口清单](#接口清单)
 - [核心设计](#核心设计)
+- [WebSocket 聊天（Hub 模式）](#websocket-聊天hub-模式)
 - [统一响应与错误处理](#统一响应与错误处理)
 - [数据库表结构](#数据库表结构)
 - [开发说明](#开发说明)
@@ -32,6 +34,7 @@
 | 日志 | zap + lumberjack | v1.28.0 / v2.0.0 | 结构化日志 + 按大小切割 |
 | 鉴权 | golang-jwt | v5.3.1 | HS256 Token 签发与解析 |
 | ID 生成 | bwmarrin/snowflake | v0.3.0 | 分布式唯一 user_id / post_id |
+| 实时通信 | coder/websocket | v1.8.15 | WebSocket 聊天（Hub 模式） |
 | 热重载 | air | — | 开发期自动编译重启 |
 
 Go 版本：`go 1.27.0`（module 名 `web_app`）
@@ -53,13 +56,15 @@ bluebell/
 │   ├── common.go               ResponseWithError：BizError → 错误码的翻译中枢
 │   ├── user.go                 注册 / 登录 / 登出 / 改密
 │   ├── community.go            社区列表 / 社区详情
-│   └── post.go                 发帖 / 帖子详情 / 列表 / 热榜 / 点赞 / 删帖
+│   ├── post.go                 发帖 / 帖子详情 / 列表 / 热榜 / 点赞 / 删帖
+│   └── ws.go                   WebSocket 握手：验签 → Accept → 构造 Client → 装配双泵
 │
 ├── 02-logic/                   业务逻辑层：编排 dao、组装数据、翻译错误码
 │   ├── user.go                 SignUp / SignIn / Signout / UpdateInfo
 │   ├── community.go            GetCommunityList / GetCommunity
-│   └── post.go                 CreatePost / GetPost / GetPostList / GetPostListByHot
-│                               / AssemblePostDetails / PostLike / SyncPostVoteNumSQL / DeletePost
+│   ├── post.go                 CreatePost / GetPost / GetPostList / GetPostListByHot
+│   │                           / AssemblePostDetails / PostLike / SyncPostVoteNumSQL / DeletePost
+│   └── ws.go                   VerifyToken（聊天握手前的身份验证）
 │
 ├── 03-dao/                     数据访问层
 │   ├── mysql/
@@ -81,6 +86,8 @@ bluebell/
 │   ├── community.go            Community / CommunityDetail
 │   ├── post.go                 Post / ParamCreatePost / ParamPostList / ApiPostDetail
 │   ├── params.go               ParamSignUp / ParamSignIn / ParamUpdate
+│   ├── hub.go                  Hub（注册表 + 广播）/ Client（连接 + 双泵）/ 全局单例
+│   ├── message.go              Message：聊天广播的 JSON 消息体
 │   └── creat_table.sql         建表脚本 + 初始社区数据
 │
 ├── 06-middlewares/             中间件
@@ -297,6 +304,27 @@ curl -X POST http://localhost:8080/api/v1/like \
   -d '{"post_id":123456789,"direction":1}'
 ```
 
+### WebSocket 接口
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/ws?token=<JWT>` | 建立聊天连接（全双工长连接） |
+
+该路由注册在 JWT 中间件**之外**，token 通过 URL query 传递、由 controller 内手动验签——
+因为浏览器发起 WebSocket 握手时无法携带自定义 `Authorization` 头。
+token 无效返回 `{"code":1006}`；curl 等非 WebSocket 客户端访问会得到 `426 Upgrade Required`（预期现象）。
+
+连接建立后，服务端把每条消息以 JSON 广播给**所有在线用户**（含发送者回显）：
+
+```json
+{"uid": 7083544471932928, "username": "xiaobao", "msg": "hello", "send_time": 1790082516}
+```
+
+- 客户端只需发送 `{"msg":"正文"}`；`uid` / `username` / `send_time` 由服务端覆盖填充，
+  伪造身份字段无效
+- 服务端每 30s ping 一次探活，10s 内无 pong 判定掉线并清理
+- 非 JSON 内容的消息会被服务端直接丢弃
+
 ---
 
 ## 核心设计
@@ -401,6 +429,47 @@ if c, ok := communityMap[p.CommunityID]; ok && c != nil {
 - **优雅关机**：监听 `SIGINT` / `SIGTERM`，用 5 秒超时的 context 执行 `srv.Shutdown()`，
   并注册 `defer` 依次关闭 MySQL 连接池与 Redis 客户端
 
+### 8. WebSocket 聊天：Hub 模式
+
+REST 接口是"一请求一函数"，聊天是"一连接两 goroutine + 一个常驻 Hub"。
+设计参考 gorilla/websocket 的 chat 示例，API 适配 coder/websocket
+（其契约：**同一条连接最多 1 个读 goroutine + 1 个写 goroutine**，恰好对应双泵模型）。
+
+```
+                        ┌────────────────────────────────────┐
+                        │            Hub.Run (单goroutine)    │
+   controller           │   for + select 三分支:              │
+ ┌──────────┐  register │                                    │
+ │ 握手/验签  │ ────────►│  register:   clients[c] = true     │
+ │ 构造Client│           │  unregister: delete + close(send)  │
+ │ go 写泵   │           │              (守卫防 double-close)  │
+ │ 当前goroutine进读泵   │  broadcast:  遍历 clients 塞 send   │
+ └──────────┘           │              (满则踢: select+default)│
+                        └────────────────────────────────────┘
+   读泵 ReadPump                    │  broadcast 通道
+   连接→Unmarshal→服务端补身份→Marshal│
+                                  ▼
+   写泵 WritePump:  for-select { msg := <-send → Conn.Write
+                                 ticker.C   → Conn.Ping(探活) }
+```
+
+关键决策：
+
+- **Hub 与库解耦**：Hub 只玩 channel 和 map，不 import websocket——模式可复用到任何长连接服务
+- **单 goroutine 持有 map**：`clients` 只被 `Hub.Run` 读写（读也不行），
+  注册/注销都走 channel 提交，天然无锁并发安全
+- **慢客户端踢出**：广播时 `select + default`，信箱（缓冲 256）塞不下说明消费太慢，
+  当场 `delete + close`，避免一个死连接卡死整个 Hub（背压取舍）
+- **close 权归 Hub**：`send` channel 只有 Hub 能 close（先删 map 再 close 防往已关闭通道投递），
+  写泵用 `for msg := range` 感知关闭并退出；unregister 分支带 `if _, ok` 守卫
+  防止"踢出 + 正常退出"双路径重复 close 导致 panic
+- **身份不可信**：客户端发来的 `uid` / `username` 一律丢弃，由服务端用 JWT 解析出的身份覆盖
+- **gin.Context 不进泵**：HTTP handler 返回后 context 会被回收复用，
+  常驻泵自己 `context.Background()` 做父 ctx，**每次 Write/Ping 用 `WithTimeout` 派生子 ctx**
+  （超时粒度是"每次操作"而非"整个连接"，父 ctx 挂全局限时会把活连接误杀）
+- **分层归属**：Hub/Client/Message 是内存领域对象，放 `05-models`（不碰 HTTP、不碰 dao、只被引用）；
+  聊天路由注册在 JWT 中间件之外，验签在 controller 内完成
+
 ---
 
 ## 统一响应与错误处理
@@ -435,6 +504,7 @@ type ResponseData struct {
 | 1013 | `CodeVoteDirectionInvalid` | 这个帖子您没有点赞 |
 | 1014 | `CodeVoteTimeExpired` | 现在时间不支持点赞 |
 | 1015 | `CodePermissionDenied` | 权限不足 |
+| 1016 | `CodeUpgradefailed` | WebSocket 协议升级失败 |
 
 ### 错误传播模式
 
@@ -552,6 +622,13 @@ gofmt -l .         # 格式检查
 - [ ] 用户信息查询接口（发帖列表中作者名已返回，但无独立用户主页接口）
 - [ ] 帖子编辑功能（`update_time` 字段与索引已就绪）
 - [ ] 单元测试与集成测试
+
+### 聊天功能后续计划
+
+- [ ] 聊天消息落库（MySQL `chat_message` 表）+ 离线消息补发
+- [ ] 广播排除发送者自己（当前发送者会收到自己的回显）
+- [ ] 私聊（按 UID 定向投递，Hub 名册可按 UID 索引）
+- [ ] 消息内容校验/敏感词过滤（走 logic 层）
 
 ---
 

@@ -20,6 +20,7 @@ const (
 	CodeVoteDirectionInvalid // 1013
 	CodeVoteTimeExpired      //1014
 	CodePermissionDenied     // 1015
+	CodeUpgradefailed        // 1016
 )
 
 // 封装错误码
@@ -40,6 +41,7 @@ var codeMsgMap = map[ResCode]string{ // map[KeyType]ValueType	map[key类型]参�
 	CodeVoteDirectionInvalid: "这个帖子您没有点赞",
 	CodeVoteTimeExpired:      "现在时间不支持点赞",
 	CodePermissionDenied:     "权限不足",
+	CodeUpgradefailed:        "更新协议失败",
 }
 
 func (c ResCode) Msg() string {

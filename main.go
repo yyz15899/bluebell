@@ -13,6 +13,7 @@ import (
 	"web_app/03-dao/mysql"
 	"web_app/03-dao/redis"
 	logger "web_app/04-logger"
+	models "web_app/05-models"
 	snowflask "web_app/07-pkg/snowflake"
 	"web_app/settings"
 
@@ -98,6 +99,9 @@ func main() {
 			}
 		}
 	}()
+
+	// 开启Hub
+	go models.GlobalHub.Run()
 	// 等待中断信号来优雅的关闭服务器,设置一个5s的超时
 	quit := make(chan os.Signal, 1) // 创建一个接收信号的通道
 	//kill 默认发送 syscall.SIGTERM信号
